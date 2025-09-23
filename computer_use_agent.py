@@ -383,7 +383,7 @@ class ComputerUseAgent(Agent):
                 "step": "",
                 "stage": "start",
                 "type": "text",
-                "text": f"🤖 开始执行任务: {instruction}\\n模式: {self.mode}",
+                "text": f"🤖 开始执行任务: {instruction}",
             },
         )
         # 清楚上一次的停止信号
@@ -600,7 +600,7 @@ class ComputerUseAgent(Agent):
                                         "step": f"{step_count}",
                                         "stage": "completed",
                                         "type": "text",
-                                        "text":  action_result["result"],
+                                        "text": action_result["result"],
                                     },
                                 )
                                 self._is_cancelled = True
@@ -695,14 +695,35 @@ class ComputerUseAgent(Agent):
                     break
 
         except Exception as e:
-            error_msg = f"执行任务时出错: {str(e)}"
-            logger.error(error_msg)
+            error_msg = str(e)
+            # 检查是否为GUI服务请求失败的错误
+            if (
+                "Error querying" in error_msg
+                and "GUI服务请求失败" in error_msg
+            ):
+                # 尝试提取请求ID
+                import re
+
+                request_id_match = re.search(
+                    r'"request_id":"([^"]+)"', error_msg
+                )
+                if request_id_match:
+                    request_id = request_id_match.group(1)
+                    formatted_error = (
+                        f"❌ 内部agent调用异常，请求ID: {request_id}"
+                    )
+                else:
+                    formatted_error = "❌ 内部agent调用异常"
+            else:
+                formatted_error = f"❌ 执行任务时出错: {error_msg}"
+
+            logger.error(f"执行任务时出错: {error_msg}")
             yield DataContent(
                 data={
                     "step": "",
                     "stage": "error",
                     "type": "text",
-                    "text": f"❌ {error_msg}",
+                    "text": formatted_error,
                 },
             )
         finally:
