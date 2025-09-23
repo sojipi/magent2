@@ -372,4 +372,3 @@ class RedisDistributedLock:
         end
         """
         await self.redis.eval(script, 1, self.key, self.identifier)
-
