@@ -107,7 +107,7 @@ class RedisStateManager:
 
         # 过期时间配置
         self.CHAT_STATE_TTL = 3600  # 对话状态1小时过期
-        self.HEARTBEAT_TTL = 30  # 心跳30秒过期
+        self.HEARTBEAT_TTL = 120  # 心跳30秒过期
         self.STATUS_QUEUE_TTL = 300  # 状态队列5分钟过期
         self.EQUIPMENT_TTL = 3600  # 设备信息1小时过期
         self.STREAM_DATA_TTL = 1800  # 流式数据30分钟过期
