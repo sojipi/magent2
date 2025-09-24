@@ -65,7 +65,7 @@ class ComputerUseAgent(Agent):
         sandbox_type = config.get("sandbox_type", "pc_wuyin")
         status_callback = config.get("status_callback")
         pc_use_add_info = config.get("pc_use_add_info", "")
-        max_steps = config.get("max_steps", 10)
+        max_steps = config.get("max_steps", 20)
         chat_id = config.get("chat_id", "")
         user_id = config.get("user_id", "")
         e2e_info = config.get("e2e_info", [])
@@ -429,7 +429,7 @@ class ComputerUseAgent(Agent):
                             "step": f"{step_count}",
                             "stage": "output",
                             "type": "text",
-                            "text": f"🔄 执行第 {step_count}步",
+                            "text": f"🔄 第 {step_count} 步",
                         },
                     )
                     step_info = {
@@ -520,7 +520,7 @@ class ComputerUseAgent(Agent):
                                 "step": f"{step_count}",
                                 "stage": "error",
                                 "type": "text",
-                                "text": f"❌ 错误: {error_msg}",
+                                "text": f"错误: {error_msg}",
                             },
                         )
                         raise analyse_error
@@ -657,7 +657,7 @@ class ComputerUseAgent(Agent):
                                 "step": f"{step_count}",
                                 "stage": "error",
                                 "type": "text",
-                                "text": f"❌ {error_msg}",
+                                "text": f"{error_msg}",
                             },
                         )
                         continue
@@ -705,17 +705,18 @@ class ComputerUseAgent(Agent):
                 import re
 
                 request_id_match = re.search(
-                    r'"request_id":"([^"]+)"', error_msg
+                    r'"request_id":"([^"]+)"',
+                    error_msg,
                 )
                 if request_id_match:
                     request_id = request_id_match.group(1)
                     formatted_error = (
-                        f"❌ 内部agent调用异常，请求ID: {request_id}"
+                        f"内部agent调用异常，请求ID: {request_id}"
                     )
                 else:
-                    formatted_error = "❌ 内部agent调用异常"
+                    formatted_error = "内部agent调用异常"
             else:
-                formatted_error = f"❌ 执行任务时出错: {error_msg}"
+                formatted_error = f"执行任务时出错: {error_msg}"
 
             logger.error(f"执行任务时出错: {error_msg}")
             yield DataContent(
