@@ -537,6 +537,13 @@ async def startup_event():
     )
 
 
+@app.get("/cua/delete_user_redis_data")
+async def delete_user_redis_data(user_id: str):
+    if not user_id:
+        return f"user_id: {user_id}"
+    await state_manager.clear_user_chat_redis_data(user_id, None)
+
+
 # 请求/响应模型
 class MessageContent(BaseModel):
     type: str
@@ -1670,6 +1677,7 @@ async def get_operation_status(
         )
 
     try:
+        await state_manager.set_heartbeat(user_id, chat_id)
         status_info = await state_manager.get_environment_operation(
             user_id,
             chat_id,
@@ -1775,15 +1783,15 @@ async def heartbeat(user_id: str, chat_id: str):
                 f", active: {current_active_chat}",
             )
             # 为失效的会话返回明确的状态信息
-            return {
-                "success": False,
-                "is_active_chat": False,
-                "status": "chat_inactive",
-                "message": "Current chat is no longer active. "
-                "Another session may be active for this user.",
-                "active_chat_id": current_active_chat,
-                "error_code": "CHAT_INACTIVE",
-            }
+            # return {
+            #     "success": True,
+            #     "is_active_chat": True,
+            #     "status": "success",
+            #     "message": "Current chat is no longer active. "
+            #     "Another session may be active for this user.",
+            #     "active_chat_id": current_active_chat,
+            #     "error_code": "CHAT_INACTIVE",
+            # }
 
         # 只为有效会话更新心跳记录
         await state_manager.set_heartbeat(user_id, chat_id)
