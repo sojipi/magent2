@@ -357,36 +357,17 @@ python -m pip install aiohttp -i https://mirrors.aliyun.com/pypi/simple/
 python -m pip install asyncio -i https://mirrors.aliyun.com/pypi/simple/
 
 ```
+##### 1.2.2 云电脑临时图片存放文件夹创建
+
+c盘下 创建一个file文件夹
 #### 📱 1.3 云手机环境准备
 
 由于一些app对剪贴板有开启限制，导致文字输入指令无法生效（通过剪贴板实现），所以手机环境需要提前安装好 `ADBKeyboard.apk`。
 
-可以写个脚本，参考下面的方法进行安装：
-
-```python
-from agentbricks.components.sandbox_center.sandboxes.cloud_phone_wy import CloudPhone
-
-def set_adb_for_phone():
-    equipment = CloudPhone()
-    # 实例id
-    list_s = []
-    for i in list_s:
-        equipment = CloudPhone(instance_id=i)
-        status, rsp = equipment.instance_manager.check_and_setup_app(
-            "http://dashscope-cn-hangzhou.oss-cn-hangzhou-internal.aliyuncs.com/wy_file/ADBKeyboard.apk",
-            "ADBKeyboard.apk"
-        )
-
-    print("初始化手机adb成功")
-
-set_adb_for_phone()
 ```
 #### 1.4 本地 Demo 启动
 
-##### 1.4.1 进入目录
-```bash
-cd demos/computer_use/computer_use_server
-```
+##### 1.4.1 在根目录下
 
 ##### 1.4.2 安装依赖
 ```bash
