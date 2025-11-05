@@ -46,119 +46,8 @@ Computer Use Agent 是一个基于人工智能的桌面自动化系统，能够�
 - **图像处理**：Pillow - 屏幕截图和图像标注
 - **云电脑**：无影云电脑 OpenAPI 执行命令、截图等
 
-## 第二章：基础使用
 
-### Qwen-Max + Qwen-VL-MAX + E2B Desktop接入使用
-注意：
-  - 开通DASHSCOPE_API_KEY
-  - 开通E2B
-  - E2B 目前仅支持英文query
-#### 1. 本地服务启动准备
-需要提前安装好python ,推荐3.10
-##### 1.1 环境变量配置
-
-##### 1.1.1 灵积百炼平台大模型API-KEY 开通
-    介绍文档：
-    https://help.aliyun.com/zh/model-studio/get-api-key?scm=20140722.S_help%40%40%E6%96%87%E6%A1%A3%40%402712195._.ID_help%40%40%E6%96%87%E6%A1%A3%40%402712195-RL_api%7EDAS%7Ekey-LOC_doc%7EUND%7Eab-OR_ser-PAR1_2102029c17568993690712578dba5c-V_4-PAR3_o-RE_new5-P0_0-P1_0&spm=a2c4g.11186623.help-search.i20
-
-备注：qwen-max/qwen-vl-max模型在链路中调用，新用户都会有免费额度；
-##### 1.1.2 E2B 开通
-    访问E2B官网注册并获取，然后配置到E2B_API_KEY
-    https://e2b.dev
-
-##### 1.1.3环境变量配置示例
-
-```bash
-# 在大模型服务平台百炼,创建api-key, 并提供该云账号uid找mobile agent团队加白
-DASHSCOPE_API_KEY=
-# E2B API Key
-E2B_API_KEY=
-```
-
-可以参考下面全局配置，也可以在根目录新建一个 `.env` 文件，将上面的配置粘贴进去，启动脚本中有读取的逻辑：
-
-```bash
-# macOS/Linux 配置方法
-nano ~/.zshrc    # 如果你用的是 zsh（macOS Catalina 及以后默认）
-# 或者
-nano ~/.bash_profile  # 如果你用的是 bash
-
-# 添加环境变量例如
-# 云电脑配置
-export DASHSCOPE_API_KEY="your_api_key_here"
-export ECD_DESKTOP_ID="your_desktop_id"
-# ... 其他配置
-
-# 保存后运行
-source ~/.zshrc
-```
-
-#### 1.4 本地 Demo 启动
-
-##### 1.4.1 进入目录
-```bash
-cd demos/computer_use/computer_use_server
-```
-
-##### 1.4.2 安装依赖
-```bash
-# 在 demos/computer_use/computer_use_server 根目录下执行
-pip install -r requirements.txt
-```
-
-##### 1.4.3 启动脚本授权和启动
-
-**注意：云电脑、云手机要保证启动运行中，可以在无影控制台，或者客户端设置。
-
-```bash
-cd demos/computer_use/computer_use_server/local_base_version
-# 赋予执行权限
-chmod +x start_base.sh
-
-# 启动
-./start_base.sh
-```
-
-如果 E2B 框架的 key 第一次在本地使用，并且直接执行 `start.sh` 启动不起来前端，可以单独执行：
-
-```bash
-streamlit run frontend_base.py
-```
-
-启动后控制台会提示输入邮箱，直接回车即可。后续就可以直接执行启动脚本。
-#### 🎉 1.4.4 启动成功输出
-
-启动成功后，终端输出如下：
-
-```
-浏览器访问前端页面: http://localhost:8501
-INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
-INFO:     Started reloader process [71212] using StatReload
-🎨 启动前端界面 (http://localhost:8501)...
-
-  You can now view your Streamlit app in your browser.
-
-  Local URL: http://localhost:8501
-  Network URL: http://
-
-  For better performance, install the Watchdog module:
-
-  $ xcode-select --install
-  $ pip install watchdog
-
-🎨 启动前端静态资源 (http://localhost:8001)...
-✅ 服务已启动!
-📱 前端界面: http://localhost:8501
-🔧 后端API: http://localhost:8002
-🔧 前端静态: http://localhost:8001
-```
-
-**访问地址：**
-- 浏览器访问前端页面：[http://localhost:8501](http://localhost:8501)
-
-
-
-## 第三章：进阶使用
+## 第二章：进阶使用
 
 ### Qwen-Max + PC/Mobile-Agent + 无影云电脑（winodos）/云手机（安卓）接入使用
 注意：
@@ -371,7 +260,7 @@ c盘下 创建一个file文件夹
 
 ##### 1.4.2 安装依赖
 ```bash
-# 在 demos/computer_use/computer_use_server 根目录下执行
+# 在根目录下执行
 pip install -r requirements.txt
 ```
 
