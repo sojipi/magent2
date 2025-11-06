@@ -1572,7 +1572,7 @@ async def switch_environment(request: InitRequest):
         f"chat_id: {chat_id}, request:{request}",
     )
     # 验证会话有效性 - 只有活跃会话才能切换环境
-    await validate_user_session(user_id, chat_id, strict_mode=True)
+    await validate_user_session(user_id, chat_id, strict_mode=False)
 
     try:
         # 启动异步环境切换操作

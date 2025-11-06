@@ -579,13 +579,37 @@ class AsyncRedisResourceAllocator:
         await pipe.execute()
 
     async def _add_to_queue(self, user_id: str):
-        """添加到排队队列"""
-        pipe = self.redis.pipeline()
-        pipe.lpush(self.QUEUE_KEY, user_id)
-        pipe.hset(self.QUEUE_TIMESTAMPS_KEY, user_id, time.time())
-        pipe.expire(self.QUEUE_KEY, self.QUEUE_TTL)
-        pipe.expire(self.QUEUE_TIMESTAMPS_KEY, self.QUEUE_TTL)
-        await pipe.execute()
+        """将用户添加到队列中（兼容旧版Redis）"""
+        # 检查用户是否已经在队列中（兼容旧版Redis的实现）
+        queue_length = await self.redis.llen(self.QUEUE_KEY)
+        if queue_length > 0:
+            queue_items = await self.redis.lrange(self.QUEUE_KEY, 0, -1)
+            # 手动检查用户是否已在队列中
+            user_already_in_queue = False
+            for item in queue_items:
+                if isinstance(item, bytes) and item.decode("utf-8") == user_id:
+                    user_already_in_queue = True
+                    break
+                elif item == user_id:
+                    user_already_in_queue = True
+                    break
+
+            # 只有当用户不在队列中时才添加
+            if not user_already_in_queue:
+                pipe = self.redis.pipeline()
+                pipe.lpush(self.QUEUE_KEY, user_id)
+                pipe.hset(self.QUEUE_TIMESTAMPS_KEY, user_id, time.time())
+                pipe.expire(self.QUEUE_KEY, self.QUEUE_TTL)
+                pipe.expire(self.QUEUE_TIMESTAMPS_KEY, self.QUEUE_TTL)
+                await pipe.execute()
+        else:
+            # 队列为空，直接添加用户
+            pipe = self.redis.pipeline()
+            pipe.lpush(self.QUEUE_KEY, user_id)
+            pipe.hset(self.QUEUE_TIMESTAMPS_KEY, user_id, time.time())
+            pipe.expire(self.QUEUE_KEY, self.QUEUE_TTL)
+            pipe.expire(self.QUEUE_TIMESTAMPS_KEY, self.QUEUE_TTL)
+            await pipe.execute()
 
     async def _wait_for_resource(
         self,
