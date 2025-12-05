@@ -80,7 +80,13 @@ class ComputerUseAgent(Agent):
         self.state_manager = state_manager
 
         # Equipment can be None initially if using dynamic allocation
-        self.equipment = equipment
+        # 如果equipment是一个字符串（比如设备ID），则保存设备ID，稍后在异步方法中获取设备对象
+        if isinstance(equipment, str):
+            self.equipment_id = equipment
+            self.equipment = None
+        else:
+            self.equipment = equipment
+            self.equipment_id = None
 
         # Setup output directory based on chat_id and timestamp
         time_now = datetime.datetime.now()
@@ -138,29 +144,52 @@ class ComputerUseAgent(Agent):
         self._wait_task = None
 
     async def _ensure_equipment(self):
-        """确保设备可用，如果没有则从状态管理器获取"""
-        if self.equipment is None and self.state_manager is not None:
+        """确保设备可用，如果没有则从状态管理器或设备ID获取"""
+        if self.equipment is None:
             try:
-                logger.info(
-                    f"尝试从状态管理器获取设备信息，对话ID: {self.chat_id}",
-                )
-
-                equipment_info = await self.state_manager.get_equipment_info(
-                    self.user_id,
-                    self.chat_id,
-                )
-
-                if equipment_info:
-                    self.equipment = await self._initialize_device_from_info(
-                        equipment_info,
+                # 首先尝试从设备ID获取设备对象
+                if self.equipment_id is not None:
+                    logger.info(
+                        f"尝试根据设备ID创建设备对象，设备ID: {self.equipment_id}",
                     )
+
+                    # 根据sandbox_type创建设备对象
+                    if self.sandbox_type == "pc_wuyin":
+                        from sandbox_center.sandboxes.cloud_computer_wy import CloudComputer
+                        self.equipment = await self._create_device(CloudComputer, self.equipment_id)
+                    elif self.sandbox_type == "phone_wuyin":
+                        from sandbox_center.sandboxes.cloud_phone_wy import CloudPhone
+                        self.equipment = await self._create_device(CloudPhone, self.equipment_id)
+                    else:
+                        raise Exception(f"不支持的沙箱类型: {self.sandbox_type}")
+
                     self._setup_sandbox_reference()
                     logger.info(
-                        f"✅ 成功重建设备对象: {equipment_info['equipment_type']}",
+                        f"✅ 成功根据设备ID创建设备对象: {self.sandbox_type}",
                     )
                     return True
-                else:
-                    await self._handle_missing_equipment()
+                # 如果没有设备ID，则尝试从状态管理器获取设备信息
+                elif self.state_manager is not None:
+                    logger.info(
+                        f"尝试从状态管理器获取设备信息，对话ID: {self.chat_id}",
+                    )
+
+                    equipment_info = await self.state_manager.get_equipment_info(
+                        self.user_id,
+                        self.chat_id,
+                    )
+
+                    if equipment_info:
+                        self.equipment = await self._initialize_device_from_info(
+                            equipment_info,
+                        )
+                        self._setup_sandbox_reference()
+                        logger.info(
+                            f"✅ 成功重建设备对象: {equipment_info['equipment_type']}",
+                        )
+                        return True
+                    else:
+                        await self._handle_missing_equipment()
 
             except Exception as e:
                 logger.error(f"获取设备失败: {str(e)}")
@@ -452,7 +481,8 @@ class ComputerUseAgent(Agent):
                             equipment_id = (
                                 self.equipment.instance_manager.instance_id
                             )
-                    equipment = self.equipment.instance_manager
+                    # 只有当self.equipment有instance_manager属性时，才进行赋值
+                    equipment = self.equipment.instance_manager if hasattr(self.equipment, "instance_manager") else None
                     step_info["equipment_id"] = equipment_id
 
                     # 发送推理开始状态
@@ -962,13 +992,8 @@ class ComputerUseAgent(Agent):
         return await asyncio.to_thread(_save_sync)
 
     async def take_screenshot(self, prefix="screenshot"):
-        """统一的截图方法，自动根据设备类型选择适当的截图方式"""
-        if self.sandbox_type == "pc_wuyin":
-            return await self._screenshot_pc(prefix)
-        elif self.sandbox_type == "phone_wuyin":
-            return await self._screenshot_phone(prefix)
-        else:
-            return await self._screenshot_default(prefix)
+        """统一的截图方法，直接使用e2b的sandbox对象"""
+        return await self._screenshot_default(prefix)
 
     async def _screenshot_pc(self, prefix):
         """电脑截图处理"""
@@ -1575,9 +1600,9 @@ class ComputerUseAgent(Agent):
         equipment,
         step_count=None,
     ):
-        """Execute PC actions based on mode response"""
+        """Execute PC actions using e2b sandbox"""
         try:
-            logger.info("Executing PC action")
+            logger.info("Executing PC action with e2b")
             action_type = mode_response.get("action", "")
             action_parameter = mode_response.get("action_params", {})
             if action_type == "stop":
@@ -1585,9 +1610,17 @@ class ComputerUseAgent(Agent):
                 return {"result": "stop"}
             elif action_type == "open app":
                 name = action_parameter["name"]
-                if name == "File Explorer":
-                    name = "文件资源管理器"
-                await equipment.open_app(name)
+                # 映射应用名称到e2b支持的格式
+                app_mapping = {
+                    "File Explorer": "explorer",
+                    "文件资源管理器": "explorer",
+                    "Notepad": "notepad",
+                    "记事本": "notepad",
+                    "Chrome": "chrome",
+                    "浏览器": "chrome",
+                }
+                app_name = app_mapping.get(name, name.lower())
+                self.sandbox.launch(app_name)
             elif action_type == "wait":
                 wait_time = action_parameter.get("time", 5)
                 await asyncio.sleep(wait_time)
@@ -1595,83 +1628,52 @@ class ComputerUseAgent(Agent):
                 x = action_parameter["position"][0]
                 y = action_parameter["position"][1]
                 count = action_parameter["count"]
-                await equipment.tap(x, y, count=count)
+                self.sandbox.move_mouse(x, y)
+                if count == 1:
+                    self.sandbox.left_click()
+                elif count == 2:
+                    self.sandbox.double_click()
             elif action_type == "right click":
                 x = action_parameter["position"][0]
                 y = action_parameter["position"][1]
-                count = action_parameter["count"]
-                await equipment.right_tap(x, y, count=count)
+                self.sandbox.move_mouse(x, y)
+                self.sandbox.right_click()
             elif action_type == "hotkey":
                 keylist = action_parameter["key_list"]
-                await equipment.hotkey(keylist)
+                self.sandbox.press(keylist)
             elif action_type == "presskey":
                 key = action_parameter["key"]
-                await equipment.press_key(key)
+                self.sandbox.press(key)
             elif action_type == "click_type":
                 x = action_parameter["position"][0]
                 y = action_parameter["position"][1]
                 text = action_parameter["text"]
-                await equipment.tap_type_enter(x, y, text)
-            elif action_type == "drag":
-                x1 = action_parameter["position1"][0]
-                y1 = action_parameter["position1"][1]
-                x2 = action_parameter["position2"][0]
-                y2 = action_parameter["position2"][1]
-                await equipment.drag(x1, y1, x2, y2)
-            elif action_type == "replace":
-                x = action_parameter["position"][0]
-                y = action_parameter["position"][1]
-                text = action_parameter["text"]
-                await equipment.replace(x, y, text)
-            elif action_type == "append":
-                x = action_parameter["position"][0]
-                y = action_parameter["position"][1]
-                text = action_parameter["text"]
-                await equipment.append(x, y, text)
+                self.sandbox.move_mouse(x, y)
+                self.sandbox.left_click()
+                self.sandbox.write(text)
             elif action_type == "tell":
                 answer_dict = action_parameter["answer"]
                 print(answer_dict)
             elif action_type == "mouse_move":
                 x = action_parameter["position"][0]
                 y = action_parameter["position"][1]
-                await equipment.mouse_move(x, y)
-            elif action_type == "middle_click":
-                x = action_parameter["position"][0]
-                y = action_parameter["position"][1]
-                await equipment.middle_click(x, y)
+                self.sandbox.move_mouse(x, y)
             elif action_type == "type_with_clear_enter":
                 clear = action_parameter["clear"]
                 enter = action_parameter["enter"]
                 text = action_parameter["text"]
-                await equipment.type_with_clear_enter(text, clear, enter)
+                if clear:
+                    # 模拟清除操作（Ctrl+A）
+                    self.sandbox.press(["Control", "A"])
+                self.sandbox.write(text)
+                if enter:
+                    self.sandbox.press("Enter")
             elif action_type == "call_user":
                 task = mode_response.get("explanation")
                 return await self._handle_human_intervention(task, step_count)
-            elif action_type == "scroll":
-                if "position" in action_parameter:  # -E
-                    x = action_parameter["position"][0]
-                    y = action_parameter["position"][1]
-                    pixels = action_parameter["pixels"]
-                    await equipment.scroll_pos(x, y, pixels)
-                else:  # e2e
-                    pixels = action_parameter["pixels"]
-                    await equipment.scroll(pixels)
-            elif action_type == "type_with_clear_enter_pos":  # New
-                clear = action_parameter["clear"]
-                enter = action_parameter["enter"]
-                text = action_parameter["text"]
-                x = action_parameter["position"][0]
-                y = action_parameter["position"][1]
-                await equipment.type_with_clear_enter_pos(
-                    text,
-                    x,
-                    y,
-                    clear,
-                    enter,
-                )
             else:
-                logger.warning(f"Unknown action_type '{action_type}'")
-                print(f"Warning: Unknown action_type '{action_type}'")
+                logger.warning(f"Unknown action_type '{action_type}' or not supported by e2b")
+                print(f"Warning: Unknown action_type '{action_type}' or not supported by e2b")
 
             return {"result": "continue"}
 
